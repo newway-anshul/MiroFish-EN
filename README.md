@@ -1,10 +1,8 @@
 <div align="center">
-## About
-
-This repository is a fork of https://github.com/666ghj/MiroFish.
-
+<b>This repository is a fork of https://github.com/666ghj/MiroFish.
 The original project contains content in Chinese.  
 This fork provides the same project with content translated into English.
+</b>
 
 <img src="./static/image/MiroFish_logo_compressed.jpeg" alt="MiroFish Logo" width="75%"/>
 
