@@ -65,7 +65,7 @@ class Config:
     
     @classmethod
     def validate(cls):
-        """Validate required configuration."""
+        """Validate required configuration, basically check if critical API keys are set or not."""
         errors = []
         if not cls.LLM_API_KEY:
             errors.append("LLM_API_KEY is not configured")
