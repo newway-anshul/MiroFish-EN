@@ -13,7 +13,7 @@ from datetime import datetime
 from enum import Enum
 
 from ..config import Config
-from ..utils.logger import get_logger
+from ..utils.logger import get_logger, log_llm_interaction
 from .zep_entity_reader import ZepEntityReader, FilteredEntities
 from .oasis_profile_generator import OasisProfileGenerator, OasisAgentProfile
 from .simulation_config_generator import SimulationConfigGenerator, SimulationParameters
@@ -344,6 +344,20 @@ class SimulationManager:
                 realtime_output_path=realtime_output_path,  # Real-time output path
                 output_platform=realtime_platform  # Output format
             )
+
+            if use_llm_for_profiles:
+                log_llm_interaction(
+                    source_file="simulation_manager.py",
+                    messages=[{
+                        "role": "user",
+                        "content": (
+                            f"generate_profiles_from_entities: simulation_id={simulation_id}, "
+                            f"graph_id={state.graph_id}, entity_count={len(filtered.entities)}, "
+                            f"parallel_count={parallel_profile_count}"
+                        ),
+                    }],
+                    response_text=f"generated_profiles_count={len(profiles)}",
+                )
             
             state.profiles_count = len(profiles)
             
@@ -408,6 +422,19 @@ class SimulationManager:
                 entities=filtered.entities,
                 enable_twitter=state.enable_twitter,
                 enable_reddit=state.enable_reddit
+            )
+
+            log_llm_interaction(
+                source_file="simulation_manager.py",
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        f"generate_simulation_config: simulation_id={simulation_id}, "
+                        f"project_id={state.project_id}, graph_id={state.graph_id}, "
+                        f"requirement={simulation_requirement}"
+                    ),
+                }],
+                response_text=(sim_params.generation_reasoning or "simulation_config_generated"),
             )
             
             if progress_callback:

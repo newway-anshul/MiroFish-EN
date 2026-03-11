@@ -19,7 +19,7 @@ from openai import OpenAI
 from zep_cloud.client import Zep
 
 from ..config import Config
-from ..utils.logger import get_logger
+from ..utils.logger import get_logger, log_llm_interaction
 from .zep_entity_reader import EntityNode, ZepEntityReader
 
 logger = get_logger('mirofish.oasis_profile')
@@ -526,18 +526,24 @@ class OasisProfileGenerator:
         
         for attempt in range(max_attempts):
             try:
+                messages = [
+                    {"role": "system", "content": self._get_system_prompt(is_individual)},
+                    {"role": "user", "content": prompt}
+                ]
                 response = self.client.chat.completions.create(
                     model=self.model_name,
-                    messages=[
-                        {"role": "system", "content": self._get_system_prompt(is_individual)},
-                        {"role": "user", "content": prompt}
-                    ],
+                    messages=messages,
                     response_format={"type": "json_object"},
                     temperature=0.7 - (attempt * 0.1)  # Lower temperature on each retry
                     # Do not set max_tokens; allow LLM to decide
                 )
                 
                 content = response.choices[0].message.content
+                log_llm_interaction(
+                    source_file="oasis_profile_generator.py",
+                    messages=messages,
+                    response_text=(content or "").strip(),
+                )
                 
                 # Check truncation (finish_reason is not 'stop')
                 finish_reason = response.choices[0].finish_reason

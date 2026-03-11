@@ -5,9 +5,12 @@ Provides unified logging to both console and file.
 
 import os
 import sys
+import json
+import inspect
 import logging
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
+from typing import List, Dict, Optional
 
 
 def _ensure_utf8_stdout():
@@ -123,4 +126,32 @@ def error(msg, *args, **kwargs):
 
 def critical(msg, *args, **kwargs):
     logger.critical(msg, *args, **kwargs)
+
+
+def log_llm_interaction(
+    messages: List[Dict[str, str]],
+    response_text: str,
+    source_file: Optional[str] = None
+) -> None:
+    """Append minimal LLM request/response data to a dedicated JSONL file."""
+    caller_file = source_file
+    if not caller_file:
+        frame = inspect.currentframe()
+        if frame and frame.f_back:
+            caller_file = frame.f_back.f_code.co_filename
+
+    record = {
+        'source_file': caller_file,
+        'request_messages': messages,
+        'response': response_text,
+    }
+
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        log_path = os.path.join(LOG_DIR, 'llm_interactions.jsonl')
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(record, ensure_ascii=False) + '\n')
+    except Exception:
+        # Never break app flow because of logging issues.
+        pass
 

@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 from openai import OpenAI
 
 from ..config import Config
+from .logger import log_llm_interaction
 
 
 class LLMClient:
@@ -37,7 +38,8 @@ class LLMClient:
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: int = 4096,
-        response_format: Optional[Dict] = None
+        response_format: Optional[Dict] = None,
+        should_log: bool = True
     ) -> str:
         """
         Send a chat request.
@@ -47,6 +49,7 @@ class LLMClient:
             temperature: Temperature parameter
             max_tokens: Maximum token count
             response_format: Response format (e.g., JSON mode)
+            should_log: Whether to save request/response to log file
             
         Returns:
             Model response text
@@ -62,10 +65,18 @@ class LLMClient:
             kwargs["response_format"] = response_format
         
         response = self.client.chat.completions.create(**kwargs)
-        content = response.choices[0].message.content
+        content_raw = response.choices[0].message.content or ""
         # Some models (e.g., MiniMax M2.5) include <think> content that should be removed
-        content = re.sub(r'<think>[\s\S]*?</think>', '', content).strip()
-        return content
+        content_cleaned = re.sub(r'<think>[\s\S]*?</think>', '', content_raw).strip()
+
+        if should_log:
+            log_llm_interaction(
+                source_file="llm_client.py",
+                messages=messages,
+                response_text=content_cleaned,
+            )
+
+        return content_cleaned
     
     def chat_json(
         self,
@@ -88,7 +99,8 @@ class LLMClient:
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            should_log=False,
         )
         # Clean markdown code fence markers
         cleaned_response = response.strip()
@@ -97,7 +109,18 @@ class LLMClient:
         cleaned_response = cleaned_response.strip()
 
         try:
-            return json.loads(cleaned_response)
+            parsed_json = json.loads(cleaned_response)
+            log_llm_interaction(
+                source_file="llm_client.py",
+                messages=messages,
+                response_text=cleaned_response,
+            )
+            return parsed_json
         except json.JSONDecodeError:
+            log_llm_interaction(
+                source_file="llm_client.py",
+                messages=messages,
+                response_text=cleaned_response,
+            )
             raise ValueError(f"Invalid JSON returned by LLM: {cleaned_response}")
 
